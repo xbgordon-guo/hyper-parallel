@@ -57,6 +57,7 @@ from typing import Any, Callable, Iterator, Optional, Sequence, Tuple
 import numpy as np
 
 from hyper_parallel.platform import get_platform
+from hyper_parallel.core.shard.ops.sfa_dump import dump_sfa_call
 
 platform = get_platform()
 
@@ -729,7 +730,10 @@ def fold_sparse_flash_attention(func: Callable, seq_shard_id: int, seq_shards: i
                 key.shape[0], seq_shard_id, seq_shards, block_id)
             kw["actual_seq_lengths_query"] = q_len
             kw["actual_seq_lengths_kv"] = k_len
-        return func(q, keys[block_id], values[block_id], topk, *rest, **kw)
+        call_args = (q, keys[block_id], values[block_id], topk, *rest)
+        output = func(*call_args, **kw)
+        dump_sfa_call(call_args, kw, output, block_id, seq_shard_id, seq_shards)
+        return output
 
     out0 = _call(0, q0, t0, qr0)
     out1 = _call(1, q1, t1, qr1)
